@@ -1,19 +1,18 @@
-﻿using System.Net.Mime;
+﻿using System.IO.Enumeration;
 using System.Numerics;
 using ClickableTransparentOverlay;
 using ImGuiNET;
+using ModernImgui.Icons;
 
 namespace ModernImgui.Rendering;
 
 public class Renderer : Overlay
 {
-    private bool _checkBox, _checkBox2;
-    private int _comboBox, _sliderScalar = 0;
     private readonly string[] _comboItems = { "Item 1", "Item 2", "Item 3", "Item 4" };
-    private ImFontPtr _defaultFont = null!;
-    private ImFontPtr _font = null!;
-    private ImFontPtr _fontBold = null!;
-    private readonly string[] _headerItems = { "Head 1", "Head 2", "Head 3", "Head 4" };
+    private readonly string[] _headerItems = { "Home", "Aim", "Esp", "Misc" };
+    private bool _checkBox, _checkBox2;
+    private int _comboBox, _sliderScalar;
+
     private int _selectedHeader;
 
     protected override unsafe Task PostInitialized()
@@ -21,21 +20,42 @@ public class Renderer : Overlay
         ReplaceFont(config =>
         {
             var io = ImGui.GetIO();
-
-            _defaultFont = io.Fonts.AddFontDefault();
-            if (File.Exists("Fonts\\Inter-Medium.ttf"))
-                _font = io.Fonts.AddFontFromFileTTF(
-                    "Fonts\\Inter-Medium.ttf", 17, config,
-                    io.Fonts.GetGlyphRangesDefault());
-
-            if (File.Exists("Fonts\\Inter-SemiBold.ttf"))
-                _fontBold = io.Fonts.AddFontFromFileTTF(
+            
+            if (File.Exists("Fonts\\lucide.ttf") && File.Exists("Fonts\\Inter-SemiBold.ttf"))
+            {
+                Console.WriteLine("Font exists");
+                io.Fonts.AddFontFromFileTTF(
                     "Fonts\\Inter-SemiBold.ttf", 20, config,
                     io.Fonts.GetGlyphRangesDefault());
+
+                ushort[] glyphRanges = [Lucide.IconMin, Lucide.IconMax16, 0];
+
+                config->MergeMode = 1;
+                config->OversampleH = 1;
+                config->OversampleV = 1;
+                config->PixelSnapH = 1;
+                fixed (ushort* p = &glyphRanges[0])
+                {
+                    io.Fonts.AddFontFromFileTTF(
+                        "Fonts\\lucide.ttf", 20, config, new IntPtr(p));
+                }
+            }
         });
         Style();
         return base.PostInitialized();
     }
+    private void VerticalCenteredIconWithText(string icon, string text,float iconScale = 1.1f)
+    {
+        var iconSizeHeight = 18*iconScale;
+        var textSize = ImGui.CalcTextSize(text).Y;
+        ImGui.SetWindowFontScale(iconScale);
+        ImGui.Text(icon);
+        ImGui.SetWindowFontScale(1f);
+        ImGui.SameLine();
+        ImGui.SetCursorPosY(ImGui.GetCursorPosY() + (iconSizeHeight - textSize) / 2);
+        ImGui.Text(text);
+    }
+   
 
     protected override void Render()
     {
@@ -55,83 +75,72 @@ public class Renderer : Overlay
             drawList.AddRectFilled(windowPos, new Vector2(windowPos.X + windowSize.X, windowPos.Y + headerHeight),
                 ImGui.GetColorU32(dark), 9.0f, ImDrawFlags.RoundCornersTop);
             var circleCenter = new Vector2(windowPos.X + 25, windowPos.Y + 25);
-            drawList.AddCircleFilled(circleCenter, 10.5f, ImGui.GetColorU32(new Vector4(0.3294117748737335f, 0.6666666865348816f, 0.8588235378265381f, 1.0f)));
+            drawList.AddCircleFilled(circleCenter, 10.5f,
+                ImGui.GetColorU32(new Vector4(0.3294117748737335f, 0.6666666865348816f, 0.8588235378265381f, 1.0f)));
             ImGui.SetCursorPos(new Vector2(45, 0));
             ImGui.BeginChild("header", new Vector2(-1, headerHeight));
             {
-                ImGui.PushFont(_fontBold);
-                {
-                    var windowHeight = ImGui.GetWindowHeight();
-                    var height = ImGui.GetTextLineHeight();
-                    ImGui.SetCursorPosY((windowHeight - height) / 2.0f);
-                    ImGui.Text("VYNXC");
-                }
-                ImGui.PopFont();
+                var windowHeight = ImGui.GetWindowHeight();
+                var height = ImGui.GetTextLineHeight();
+                ImGui.SetCursorPosY((windowHeight - height) / 2.0f);
+                ImGui.Text("VYNXC");
                 ImGui.SameLine(0, 30);
                 var textColor = ImGui.GetColorU32(ImGuiCol.Text);
                 var textColorVec = ImGui.ColorConvertU32ToFloat4(textColor);
                 textColorVec.W /= 2;
-                ImGui.PushFont(_font);
-                {
-                    ImGui.PushStyleColor(ImGuiCol.Button, new Vector4(0, 0, 0, 0));
-                    ImGui.PushStyleColor(ImGuiCol.ButtonHovered, new Vector4(0, 0, 0, 0));
-                    ImGui.PushStyleColor(ImGuiCol.ButtonActive, new Vector4(0, 0, 0, 0));
-                    ImGui.PushStyleVar(ImGuiStyleVar.FramePadding, new Vector2(0, 0));
-                    for (var i = 0; i < _headerItems.Length; i++)
-                    {
-                        var headerString = _headerItems[i];
-                        ImGui.SameLine(0, 15);
 
-                        if (i == _selectedHeader)
+                ImGui.PushStyleColor(ImGuiCol.Button, new Vector4(0, 0, 0, 0));
+                ImGui.PushStyleColor(ImGuiCol.ButtonHovered, new Vector4(0, 0, 0, 0));
+                ImGui.PushStyleColor(ImGuiCol.ButtonActive, new Vector4(0, 0, 0, 0));
+                ImGui.PushStyleVar(ImGuiStyleVar.FramePadding, new Vector2(0, 0));
+                for (var i = 0; i < _headerItems.Length; i++)
+                {
+                    var headerString = _headerItems[i];
+                    ImGui.SameLine(0, 15);
+
+                    if (i == _selectedHeader)
+                    {
+                        SetCursorCenterY();
+                        ImGui.Button(headerString);
+                    }
+                    else
+                    {
+                        ImGui.PushStyleColor(ImGuiCol.Text, textColorVec);
                         {
                             SetCursorCenterY();
-                            ImGui.Button(headerString);
-                        }
-                        else
-                        {
-                            ImGui.PushStyleColor(ImGuiCol.Text, textColorVec);
-                            {
-                                SetCursorCenterY();
 
-                                if (ImGui.Button(headerString)) _selectedHeader = i;
-                            }
-
-                            ImGui.PopStyleColor();
+                            if (ImGui.Button(headerString)) _selectedHeader = i;
                         }
+
+                        ImGui.PopStyleColor();
                     }
-
-                    ImGui.PopStyleColor(3);
-                    ImGui.PopStyleVar();
                 }
 
-                ImGui.PopFont();
+                ImGui.PopStyleColor(3);
+                ImGui.PopStyleVar();
             }
             ImGui.End();
             ImGui.SetCursorPosY(headerHeight + 10);
             ImGui.BeginChild("content", new Vector2(-1, -1));
             {
-                ImGui.PushFont(_font);
+                switch (_selectedHeader)
                 {
-                    switch (_selectedHeader)
-                    {
-                        case 0:
-                            RenderTabOne();
-                            break;
-                        case 1:
-                            RenderTabTwo();
-                            break;
-                        case 2:
-                            RenderTabThree();
-                            break;
-                        case 3:
-                            RenderTabFour();
-                            break;
-                        default:
-                            ImGui.Text("No content");
-                            break;
-                    }
+                    case 0:
+                        RenderTabOne();
+                        break;
+                    case 1:
+                        RenderTabTwo();
+                        break;
+                    case 2:
+                        RenderTabThree();
+                        break;
+                    case 3:
+                        RenderTabFour();
+                        break;
+                    default:
+                        ImGui.Text("No content");
+                        break;
                 }
-                ImGui.PopFont();
             }
         }
         ImGui.End();
@@ -143,33 +152,36 @@ public class Renderer : Overlay
     private void RenderTabOne()
     {
         Text("Tab header 1", 0.6f);
-        ImGui.PushFont(_font);
         ImGui.PushStyleColor(ImGuiCol.FrameBg, new Vector4(.2f, 0.2f, 0.2f, 1));
-        ImGui.PushStyleColor(ImGuiCol.FrameBgHovered, new Vector4(0.3294117748737335f, 0.6666666865348816f, 0.8588235378265381f, .4f));
+        ImGui.PushStyleColor(ImGuiCol.FrameBgHovered,
+            new Vector4(0.3294117748737335f, 0.6666666865348816f, 0.8588235378265381f, .4f));
         ImGui.Checkbox("Checkbox", ref _checkBox);
         ImGui.Checkbox("Checkbox 2", ref _checkBox2);
         ImGui.PopStyleColor(2);
         ImGui.Text(" Combo box");
         ImGui.PushItemWidth(150);
-        ImGui.PushStyleColor(ImGuiCol.PopupBg, new Vector4(0.1725490242242813f, 0.1921568661928177f, 0.2352941185235977f, 1.0f));
+        ImGui.PushStyleColor(ImGuiCol.PopupBg,
+            new Vector4(0.1725490242242813f, 0.1921568661928177f, 0.2352941185235977f, 1.0f));
         ImGui.Combo("##w", ref _comboBox, _comboItems, _comboItems.Length, 4);
         ImGui.PopStyleColor();
         var sizeOne = ImGui.CalcTextSize(" Slider").X;
         var sizeTwo = ImGui.CalcTextSize($"{_sliderScalar}%%").X;
         ImGui.Text(" Slider");
         ImGui.SameLine();
-        ImGui.Dummy(new Vector2(150-(sizeOne+sizeTwo),1));
+        ImGui.Dummy(new Vector2(150 - (sizeOne + sizeTwo), 1));
         ImGui.SameLine();
         ImGui.Text($"{_sliderScalar}%%");
-        ImGui.SliderInt("##slider", ref _sliderScalar, 0, 100,"");
+        ImGui.SliderInt("##slider", ref _sliderScalar, 0, 100, "");
         ImGui.PopItemWidth();
-
-        ImGui.PopFont();
-        
     }
 
     private void RenderTabTwo()
     {
+        Text("Tab header 2", 0.6f);
+        VerticalCenteredIconWithText(Lucide.Home, "Home");
+        VerticalCenteredIconWithText(Lucide.User, "User");
+        VerticalCenteredIconWithText(Lucide.Settings, "Settings");
+        VerticalCenteredIconWithText(Lucide.LogOut, "Log out");
     }
 
     private void RenderTabThree()
@@ -192,14 +204,11 @@ public class Renderer : Overlay
         var textColor = ImGui.GetColorU32(ImGuiCol.Text);
         var textColorVec = ImGui.ColorConvertU32ToFloat4(textColor);
         textColorVec.W = opacity;
-        ImGui.PushFont(_fontBold);
+        ImGui.PushStyleColor(ImGuiCol.Text, textColorVec);
         {
-            ImGui.PushStyleColor(ImGuiCol.Text, textColorVec);
-            {
-                ImGui.Text(text);
-            }
-            ImGui.PopStyleColor();
+            ImGui.Text(text);
         }
+        ImGui.PopStyleColor();
     }
 
     private void Style()
@@ -272,7 +281,8 @@ public class Renderer : Overlay
             new Vector4(0.3294117748737335f, 0.6666666865348816f, 0.8588235378265381f, 1.0f);
         style.Colors[(int)ImGuiCol.SliderGrab] = new Vector4(0.3372549116611481f, 0.3372549116611481f,
             0.3372549116611481f, 0.5400000214576721f);
-        style.Colors[(int)ImGuiCol.SliderGrabActive] = new Vector4(0.3294117748737335f, 0.6666666865348816f, 0.8588235378265381f, 1.0f);
+        style.Colors[(int)ImGuiCol.SliderGrabActive] =
+            new Vector4(0.3294117748737335f, 0.6666666865348816f, 0.8588235378265381f, 1.0f);
         style.Colors[(int)ImGuiCol.Button] = new Vector4(0.0470588244497776f, 0.0470588244497776f, 0.0470588244497776f,
             0.5400000214576721f);
         style.Colors[(int)ImGuiCol.ButtonHovered] = new Vector4(0.1882352977991104f, 0.1882352977991104f,
