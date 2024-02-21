@@ -23,15 +23,14 @@ public class Renderer : Overlay
             var io = ImGui.GetIO();
 
             _defaultFont = io.Fonts.AddFontDefault();
-            Console.WriteLine(AppDomain.CurrentDomain.BaseDirectory);
-            if (File.Exists($"{AppDomain.CurrentDomain.BaseDirectory}Fonts\\Inter-Medium.ttf"))
+            if (File.Exists("Fonts\\Inter-Medium.ttf"))
                 _font = io.Fonts.AddFontFromFileTTF(
-                    $"{AppDomain.CurrentDomain.BaseDirectory}Fonts\\Inter-Medium.ttf", 17, config,
+                    "Fonts\\Inter-Medium.ttf", 17, config,
                     io.Fonts.GetGlyphRangesDefault());
 
-            if (File.Exists($"{AppDomain.CurrentDomain.BaseDirectory}Fonts\\Inter-SemiBold.ttf"))
+            if (File.Exists("Fonts\\Inter-SemiBold.ttf"))
                 _fontBold = io.Fonts.AddFontFromFileTTF(
-                    $"{AppDomain.CurrentDomain.BaseDirectory}Fonts\\Inter-SemiBold.ttf", 20, config,
+                    "Fonts\\Inter-SemiBold.ttf", 20, config,
                     io.Fonts.GetGlyphRangesDefault());
         });
         Style();
